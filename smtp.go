@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
@@ -396,7 +397,9 @@ func SendMail(r *Remote, from string, to []string, msg []byte) error {
 	if err != nil {
 		return err
 	}
-	_, err = w.Write(msg)
+
+	msgWithText := unsafeAddTextPlain(msg)
+	_, err = w.Write(msgWithText)
 	if err != nil {
 		return err
 	}
@@ -405,6 +408,45 @@ func SendMail(r *Remote, from string, to []string, msg []byte) error {
 		return err
 	}
 	return c.Quit()
+}
+
+// Add text body if html and text bodies are missing.
+// For known-good messages only, as the checks are naive.
+func unsafeAddTextPlain(msg []byte) []byte {
+	hasTextBody := bytes.Contains(msg, []byte(` text/plain`))
+	if hasTextBody {
+		return msg
+	}
+
+	hasHTMLBody := bytes.Contains(msg, []byte(` text/html`))
+	if hasHTMLBody {
+		return msg
+	}
+
+	boundaryPrefix := ` boundary="`
+	boundaryStart := len(boundaryPrefix) + bytes.Index(msg, []byte(boundaryPrefix))
+	boundaryEnd := boundaryStart + bytes.Index(msg[boundaryStart:], []byte(`"`))
+	boundaryFinal := len(msg) - bytes.LastIndex(msg, []byte(`--`))
+
+	boundaryText := string(msg[boundaryStart:boundaryEnd])
+
+	msgWithText := msg[:len(msg)-boundaryFinal]
+
+	text := strings.Join([]string{
+		"",
+		"Content-Type: text/plain",
+		"Content-Transfer-Encoding: quoted-printable",
+		"",
+		"See attachment(s).",
+		"",
+		"",
+		fmt.Sprintf("--%s--", boundaryText),
+	}, "\r\n")
+	textBytes := []byte(text)
+
+	msgWithText = append(msgWithText, textBytes...)
+
+	return msgWithText
 }
 
 // Extension reports whether an extension is support by the server.
