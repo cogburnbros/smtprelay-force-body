@@ -1,5 +1,8 @@
 # smtprelay
 
+> **NOTE: Agent-enabled, context-aware development continues in the private repo [cogburn-smtprelay](https://github.com/cogburnbros/cogburn-smtprelay).**
+> This repository is archived and no longer active.
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/decke/smtprelay)](https://goreportcard.com/report/github.com/decke/smtprelay)
 
 Simple Golang based SMTP relay/proxy server that accepts mail via SMTP
